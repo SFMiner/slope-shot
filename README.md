@@ -14,36 +14,46 @@ Just let it save.
 
 ## Export the web build
 
-1. **Editor → Manage Export Templates → Download and Install** (one-time, per
-   Godot version).
-2. **Project → Export** → the **Web** preset is already configured →
-   **Export Project** → keep the path `export/web/index.html`.
-
-## Run the web build
-
-A Godot web export will NOT run by double-clicking `index.html` (browsers
-block it on `file://`). Serve it over HTTP:
+Preset **Web** uses the lean 2D custom template (`godot-2d-web-template`),
+single-threaded, and writes to `../exports/slope-shot/index.html`:
 
 ```
-cd export/web
-python -m http.server 8000
+Godot --headless --path . --export-release "Web" ../exports/slope-shot/index.html
 ```
 
-Then open `http://localhost:8000` in a browser. On the school network, run
-that on your machine and have Chromebooks browse to `http://YOUR_IP:8000`,
-or drop the `export/web` folder onto any static host (itch.io, GitHub Pages,
-school web space).
+Before exporting run `python ../../godot-2d-web-template/check_web_template.py .`.
+Serve the export over HTTP (browsers block `file://`), e.g.
+`python -m http.server 8000` inside the export folder.
 
-Thread support is deliberately disabled in the export preset, so the build
-runs without special COOP/COEP server headers — any dumb static host works.
+## Tests
+
+`GODOT=<godot 4.5 binary> bash tests/run_all_tests.sh` runs `test_keyboard.gd`
+(Tab order, keyboard exit, shortcuts, mute) and `test_smoke.gd` (loads the
+game, runs a flight, checks the hit test and level 8).
+
+## Features
+
+- [x] 8 authored levels, then endless random levels
+- [x] Slope shown three ways: fraction, words, preview line (first 4 levels)
+- [x] Button input only (no typing)
+- [x] Keyboard: Up/Down rise, Left/Right run, Enter launch, Tab order, M sound, Esc leave
+- [x] On-screen key hint
+- [x] Sound waits for first click/key; SOUND on/off button
+- [x] Visible focus outline on every control
+- [x] Sims-site keyboard exit (Tab past the ends and Esc post `sims:leave-game`)
+- [x] Cleared flags show a tick, not only a colour change
+- [x] Web export (lean 2D template) and headless tests
+- [ ] Screen reader support (canvas-drawn grid; not available)
 
 ## Notes
 
 - **Audio**: all SFX are generated as PCM in code (`scripts/sfx.gd`). There
   are no audio asset files, so the web .ogg import constraint never applies.
-- **High scores**: stored in browser localStorage on web (per-machine,
-  per-browser — each Chromebook keeps its own list), or
-  `user://slope_shot_highscores.json` on desktop.
+- **High scores**: unused (no finale since play is endless). `save_system.gd`
+  uses browser localStorage on web or `user://slope_shot_highscores.json`
+  on desktop; no absolute paths.
+- `countdown.mp3` and `rocket_engine.mp3` are not used by the game and are
+  left out of the export.
 - **Hit test**: exact integer comparison `rise * flag.x == run * flag.y`.
   Unreduced fractions (4/2 for slope 2) count as correct.
 - **Level 8**: two flags, steeper first. Hitting the shallow one early gives

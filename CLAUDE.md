@@ -18,13 +18,17 @@ reward by deliberate asymmetry).
 - **Run in editor**: open `project.godot` in Godot 4.5, press **F5**. The main
   scene is `main.tscn` (a bare `Control` with `main.gd` attached). This is the
   normal teacher/projector path.
-- **Web export**: Project → Export → the **Web** preset is preconfigured →
-  export to `export/web/index.html`. Then serve over HTTP (browsers block
-  `file://`): `cd export/web; python -m http.server 8000`.
+- **Web export**: preset **Web** is preconfigured (lean 2D custom template,
+  absolute path) and exports to `../exports/slope-shot/index.html`; run
+  `check_web_template.py` first. Serve over HTTP, not `file://`.
 - **Thread support is deliberately OFF** in the export preset so the build runs
   on any dumb static host without COOP/COEP headers. Do not enable it.
-- No build/lint/test tooling exists — this is a pure-GDScript Godot project.
-  "Verify" means running it in the editor.
+- Tests: `GODOT=<4.5 binary> bash tests/run_all_tests.sh` (keyboard + smoke).
+- **Keyboard**: Tab order lives in `_setup_keyboard()` in `main.gd` (passed to
+  `scripts/keyboard_nav.gd`, which does Tab/Esc/leave and the arrow/Enter/M
+  shortcuts, and skips disabled/hidden controls). Sound stays silent until
+  `Sfx.unlock()` (first key/click) and respects `Sfx.muted`.
+- `countdown.mp3` / `rocket_engine.mp3` are unused leftovers (excluded from export).
 
 ## Architecture
 

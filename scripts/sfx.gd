@@ -14,6 +14,10 @@ const MIX_RATE: int = 22050
 
 # === PRIVATE VARIABLES ===
 var _players: Dictionary = {}
+# No sound until the player's first click or key (browsers and the site's
+# accessibility rules both require it), and the player can mute at any time.
+var unlocked: bool = false
+var muted: bool = false
 
 # === LIFECYCLE METHODS ===
 func _ready() -> void:
@@ -23,7 +27,12 @@ func _ready() -> void:
 	_add_sound("buzz", _gen_buzz())
 
 # === PUBLIC METHODS ===
+func unlock() -> void:
+	unlocked = true
+
 func play_sound(sound_name: String) -> void:
+	if not unlocked or muted:
+		return
 	if _players.has(sound_name):
 		_players[sound_name].play()
 	else:

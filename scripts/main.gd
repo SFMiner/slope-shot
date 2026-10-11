@@ -26,12 +26,15 @@ const FLIGHT_SPEED: float = 6.0  # grid units per second along the staircase
 const HIT_PAUSE: float = 1.5
 const TOP_BAR_HEIGHT: float = 56.0
 const BOTTOM_BAR_HEIGHT: float = 150.0
+const HINT_HEIGHT: float = 30.0
+const HINT_TEXT: String = "KEYS:  UP/DOWN = rise   LEFT/RIGHT = run   ENTER = launch   TAB = next button   M = sound   ESC = leave"
 const ALPHABET: String = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 const COLOR_NEON: Color = Color(0.35, 0.95, 1.0)
 const COLOR_GOOD: Color = Color(0.4, 1.0, 0.6)
 const COLOR_BAD: Color = Color(1.0, 0.5, 0.4)
 const COLOR_WARN: Color = Color(1.0, 1.0, 0.5)
+const COLOR_TEXT_DIM: Color = Color(0.65, 0.85, 0.95)
 const COLOR_BG: Color = Color(0.04, 0.05, 0.10)
 
 # Level data. "ordered" = multiple flags, steepest target must be hit first.
@@ -82,6 +85,9 @@ var slope_fraction_label: Label = null
 var slope_words_label: Label = null
 var launch_button: Button = null
 var skip_button: Button = null
+var mute_button: Button = null
+var keyboard: KeyboardNav = null
+var hint_label: Label = null
 var name_overlay: Control = null
 var board_overlay: Control = null
 var board_list_label: Label = null
@@ -101,8 +107,14 @@ func _ready() -> void:
 	_build_confetti()
 	_build_name_overlay()
 	_build_board_overlay()
+	_setup_keyboard()
 	_refresh_slope()
 	_run_intro()
+
+func _input(event: InputEvent) -> void:
+	# The first click or key unlocks sound; nothing plays before it.
+	if (event is InputEventKey or event is InputEventMouseButton) and event.is_pressed():
+		sfx.unlock()
 
 func _process(delta: float) -> void:
 	if grid_view.is_flying:
@@ -258,6 +270,9 @@ func _reset_for_attempt() -> void:
 	_set_steppers_enabled(true)
 	if current_state != State.INTRO:
 		current_state = State.AIM
+		# Keyboard players keep their place: focus returns to LAUNCH after a shot.
+		if keyboard != null and keyboard.keyboard_mode and get_viewport().gui_get_focus_owner() == null:
+			launch_button.grab_focus()
 
 func _preview_allowed() -> bool:
 	# Intro always demos the line; gameplay only on the first PREVIEW_LEVELS.
@@ -373,6 +388,44 @@ func _on_skip_pressed() -> void:
 		return
 	_start_game()
 
+func _toggle_mute() -> void:
+	sfx.muted = not sfx.muted
+	mute_button.text = "SOUND: OFF" if sfx.muted else "SOUND: ON"
+	sfx.play_sound("click")
+
+func _setup_keyboard() -> void:
+	keyboard = KeyboardNav.new()
+	keyboard.name = "KeyboardNav"
+	add_child(keyboard)
+	# Tab order: skip (intro only), rise -/+, run -/+, launch, sound
+	var controls: Array[Control] = [skip_button]
+	for b: Button in _stepper_buttons:
+		controls.append(b)
+	controls.append(launch_button)
+	controls.append(mute_button)
+	keyboard.setup(controls)
+	keyboard.shortcut.connect(_on_shortcut)
+	keyboard.activity.connect(sfx.unlock)
+
+func _on_shortcut(action: String) -> void:
+	match action:
+		"rise_up":
+			_change_rise(1)
+		"rise_down":
+			_change_rise(-1)
+		"run_up":
+			_change_run(1)
+		"run_down":
+			_change_run(-1)
+		"launch":
+			# During the intro demo, Enter skips it
+			if current_state == State.INTRO:
+				_on_skip_pressed()
+			else:
+				_on_launch_pressed()
+		"mute":
+			_toggle_mute()
+
 func _change_letter(slot: int, amount: int) -> void:
 	_letters[slot] = posmod(_letters[slot] + amount, ALPHABET.length())
 	letter_labels[slot].text = ALPHABET[_letters[slot]]
@@ -475,18 +528,31 @@ func _build_top_bar() -> void:
 	skip_button.custom_minimum_size = Vector2(140.0, 56.0)
 	skip_button.add_theme_font_size_override("font_size", 24)
 	skip_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	skip_button.offset_left = -160.0
+	skip_button.offset_left = -360.0
 	skip_button.offset_top = 10.0
-	skip_button.offset_right = -20.0
+	skip_button.offset_right = -230.0
 	skip_button.offset_bottom = 66.0
 	skip_button.pressed.connect(_on_skip_pressed)
 	_style_button(skip_button)
 	add_child(skip_button)
 
+	mute_button = Button.new()
+	mute_button.text = "SOUND: ON"
+	mute_button.add_theme_font_size_override("font_size", 22)
+	mute_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	mute_button.offset_left = -210.0
+	mute_button.offset_top = 10.0
+	mute_button.offset_right = -20.0
+	mute_button.offset_bottom = 66.0
+	mute_button.pressed.connect(_toggle_mute)
+	_style_button(mute_button)
+	add_child(mute_button)
+
 func _build_bottom_bar() -> void:
 	var bar: HBoxContainer = HBoxContainer.new()
 	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	bar.offset_top = -BOTTOM_BAR_HEIGHT
+	bar.offset_bottom = -HINT_HEIGHT
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.add_theme_constant_override("separation", 44)
 	add_child(bar)
@@ -508,7 +574,7 @@ func _build_bottom_bar() -> void:
 	slope_fraction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	slope_box.add_child(slope_fraction_label)
 	slope_words_label = Label.new()
-	slope_words_label.add_theme_font_size_override("font_size", 20)
+	slope_words_label.add_theme_font_size_override("font_size", 24)
 	slope_words_label.add_theme_color_override("font_color", COLOR_NEON)
 	slope_words_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	slope_box.add_child(slope_words_label)
@@ -529,6 +595,17 @@ func _build_bottom_bar() -> void:
 	_style_button(launch_button, Color(0.3, 1.0, 0.5))
 	launch_button.pressed.connect(_on_launch_pressed)
 	bar.add_child(launch_button)
+
+	# On-screen key help: mouse-only actions all have a key.
+	hint_label = Label.new()
+	hint_label.text = HINT_TEXT
+	hint_label.add_theme_font_size_override("font_size", 22)
+	hint_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	hint_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	hint_label.offset_top = -HINT_HEIGHT
+	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hint_label)
 
 func _make_stepper(title: String) -> Dictionary:
 	var box: VBoxContainer = VBoxContainer.new()

@@ -98,10 +98,10 @@ func _draw_grid() -> void:
 		draw_line(grid_to_px(Vector2(0, i)), grid_to_px(Vector2(GRID_MAX, i)), col, width)
 		# Axis numbers must be readable from across a classroom.
 		var x_label_pos: Vector2 = grid_to_px(Vector2(i, 0)) + Vector2(-6.0, 30.0)
-		draw_string(font, x_label_pos, str(i), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, COLOR_TEXT)
+		draw_string(font, x_label_pos, str(i), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, COLOR_TEXT)
 		if i > 0:
 			var y_label_pos: Vector2 = grid_to_px(Vector2(0, i)) + Vector2(-38.0, 7.0)
-			draw_string(font, y_label_pos, str(i), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, COLOR_TEXT)
+			draw_string(font, y_label_pos, str(i), HORIZONTAL_ALIGNMENT_LEFT, -1, 24, COLOR_TEXT)
 
 func _draw_preview_line() -> void:
 	# The line y = (rise/run) * x, extended to whichever grid edge it
@@ -141,6 +141,14 @@ func _draw_flags() -> void:
 			pole_top + Vector2(0.0, _cell * 0.36),
 		])
 		draw_colored_polygon(flag_tri, col)
+		if done:
+			# A tick on cleared flags, so "done" is not shown by grey alone.
+			var tick: PackedVector2Array = PackedVector2Array([
+				base + Vector2(-_cell * 0.3, _cell * 0.05),
+				base + Vector2(-_cell * 0.12, _cell * 0.25),
+				base + Vector2(_cell * 0.3, -_cell * 0.2),
+			])
+			draw_polyline(tick, COLOR_TARGET_RING, 4.0)
 
 func _draw_rocket() -> void:
 	var center: Vector2 = grid_to_px(rocket_grid)
